@@ -1,4 +1,5 @@
 from dash import Dash, html, dcc
+from numpy import size
 import plotly.express as px
 import pandas as pd
 
@@ -7,21 +8,21 @@ from data_manipulations import *
 
 app = Dash(__name__)
 
-df = pd.read_csv("tweets_annotated.1650575029.formulaone.csv")
+# df = pd.read_csv("tweets_annotated.1650575029.formulaone.csv")
+df = pd.read_csv("tweets_annotated.elon_musk.1651256232.csv")
 # df = pd.read_csv("tweets_annotated.1650577206.elonmusk.csv")
 df = prep_text(df)
 
 # Line - Tweets Over Time Buckets
 tweet_df_buckets = df.groupby(pd.Grouper(
-    key='created_at', freq='60Min', convention='start')).size()
+    key='created_at', freq='5Min', convention='start')).size()
 df_t = pd.DataFrame(list(tweet_df_buckets.items()),
                     columns=['created_at', 'counts'])
-
 fig_buckets = px.line(
     df_t,
     x="created_at",
     y="counts",
-    title="Tweet Counts in 60 minute buckets",
+    title="Tweet Counts in 5 minute buckets",
     labels={
         'created_at': 'Time',
         'counts': 'Count'
@@ -32,7 +33,7 @@ fig_buckets = px.line(
 tweet_sentiment_time_buckets = df.groupby([
     'sentiment',
     pd.Grouper(
-        key='created_at', freq='60Min', convention='start')
+        key='created_at', freq='5Min', convention='start')
 ]).size()
 df_t_s = tweet_sentiment_time_buckets.reset_index(name='counts')
 
@@ -42,7 +43,7 @@ fig_tweet_sentiment_time_buckets = px.line(
     color="sentiment",
     x="created_at",
     y="counts",
-    title="Tweet Sentiment Counts in 60 minute Time Buckets",
+    title="Tweet Sentiment Counts in 5 minute Time Buckets",
     labels={
         'created_at': 'Time',
         'sentiment': 'Sentiment',
@@ -67,7 +68,6 @@ fig_pie_overall_sent = px.pie(
 # Chloropleth - Median Tweet Sentiment by Country
 tweet_most_common_sentiment_by_country = df.groupby(
     'country')['sentiment_numeric'].mean().reset_index(name='sentiment_mean')
-# print(tweet_most_common_sentiment_by_country)
 fig_chloro_average_sentiment = px.choropleth(
     tweet_most_common_sentiment_by_country,
     locations="country",
@@ -83,6 +83,27 @@ fig_chloro_average_sentiment = px.choropleth(
     },
     width=1500,
     height=800
+)
+
+# Sunburst sentiments by platform
+tweet_sentiments_by_source = df.groupby(['source', 'sentiment'])['sentiment'].count().reset_index(name='count')
+top_platforms = df['source'].value_counts()[:5].to_frame().reset_index()['index'].to_list()
+tweet_sentiments_by_platform_top = tweet_sentiments_by_source[tweet_sentiments_by_source['source'].isin(top_platforms)]
+fig_sunb = px.sunburst(
+    tweet_sentiments_by_platform_top,
+    path=["source", "sentiment","count"],
+    height=1000,
+    title='Sentiment Counts per Platform',
+    color='sentiment'
+)
+
+# Treemap
+fig_treemap = px.treemap(
+    tweet_sentiments_by_platform_top,
+    path=["source", "sentiment","count"],
+    height=1000,
+    title='Sentiment Counts per Platform',
+    color='sentiment'
 )
 
 # Geo - Tweet Counts
@@ -142,12 +163,23 @@ fig_tweet_most_common_sentiment_by_platform = px.bar(
     }
 )
 
+# Mabox Density
+fig_rel = px.density_mapbox(
+    df, lat='lat', lon='long', z='reliability', radius=10,
+    center=dict(lat=0, lon=180), zoom=0,
+    mapbox_style="stamen-terrain"
+)
+
+# Reliability 
+
+
+
 app.layout = html.Div(children=[
     html.H1(children='Twitter Dashboard'),
 
     html.Div(children='''
         Vizualisations for Twitter Sentiment Data.
-        Dataset consists of tweets search for by term `Formula One`
+        Dataset consists of tweets search for by term `Elon Musk`
     '''),
     html.Div(
         dcc.Graph(
@@ -202,6 +234,27 @@ app.layout = html.Div(children=[
         dcc.Graph(
             id='fig_chloro_average_sentiment',
             figure=fig_chloro_average_sentiment,
+            style={'width': 'auto'}
+        ), style={'display': 'inline-block'}
+    ),
+    html.Div(
+        dcc.Graph(
+            id='fig_sunb',
+            figure=fig_sunb,
+            style={'width': 'auto'}
+        ), style={'display': 'inline-block'}
+    ),
+    html.Div(
+        dcc.Graph(
+            id='fig_treemap',
+            figure=fig_treemap,
+            style={'width': 'auto'}
+        ), style={'display': 'inline-block'}
+    ),
+    html.Div(
+        dcc.Graph(
+            id='fig_rel',
+            figure=fig_rel,
             style={'width': 'auto'}
         ), style={'display': 'inline-block'}
     )
