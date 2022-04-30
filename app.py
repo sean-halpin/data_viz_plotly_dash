@@ -10,7 +10,6 @@ app = Dash(__name__)
 
 # df = pd.read_csv("tweets_annotated.1650575029.formulaone.csv")
 df = pd.read_csv("tweets_annotated.elon_musk.1651256232.csv")
-# df = pd.read_csv("tweets_annotated.1650577206.elonmusk.csv")
 df = prep_text(df)
 
 # Line - Tweets Over Time Buckets
@@ -75,6 +74,8 @@ fig_chloro_average_sentiment = px.choropleth(
     projection="natural earth",
     hover_name="country",
     color="sentiment_mean",
+    color_continuous_scale='aggrnyl',
+    color_continuous_midpoint=0.4,
     title="Sentiment Positivity by Country",
     labels={
         'country': 'Country',
@@ -91,7 +92,8 @@ top_platforms = df['source'].value_counts()[:5].to_frame().reset_index()['index'
 tweet_sentiments_by_platform_top = tweet_sentiments_by_source[tweet_sentiments_by_source['source'].isin(top_platforms)]
 fig_sunb = px.sunburst(
     tweet_sentiments_by_platform_top,
-    path=["source", "sentiment","count"],
+    path=["source", "sentiment"],
+    values='count',
     height=1000,
     title='Sentiment Counts per Platform',
     color='sentiment'
@@ -100,10 +102,11 @@ fig_sunb = px.sunburst(
 # Treemap
 fig_treemap = px.treemap(
     tweet_sentiments_by_platform_top,
-    path=["source", "sentiment","count"],
+    path=["source", "sentiment"],
     height=1000,
     title='Sentiment Counts per Platform',
-    color='sentiment'
+    color='sentiment',
+    values='count'
 )
 
 # Geo - Tweet Counts
@@ -156,6 +159,7 @@ fig_tweet_most_common_sentiment_by_platform = px.bar(
     x='source',
     y='sentiment_mean',
     color='source',
+    color_continuous_scale='thermal',
     title="Average Sentiment Positivity by Platform",
     labels={
         'source': 'Platform',
@@ -170,8 +174,27 @@ fig_rel = px.density_mapbox(
     mapbox_style="stamen-terrain"
 )
 
-# Reliability 
-
+# Chloropleth - Median Tweet Reliability by Country
+tweet_avg_reliability_by_country = df.groupby(
+    'country')['reliability'].mean().reset_index(name='reliability_mean')
+fig_chloro_average_reliability = px.choropleth(
+    tweet_avg_reliability_by_country,
+    locations="country",
+    locationmode="country names",
+    projection="natural earth",
+    hover_name="country",
+    color="reliability_mean",
+    color_continuous_scale='thermal',
+    color_continuous_midpoint=0.7,
+    title="Mean Reliability by Country",
+    labels={
+        'country': 'Country',
+        'reliability_mean': 'Reliability',
+        'counts': 'Count'
+    },
+    width=1500,
+    height=800
+)
 
 
 app.layout = html.Div(children=[
@@ -255,6 +278,13 @@ app.layout = html.Div(children=[
         dcc.Graph(
             id='fig_rel',
             figure=fig_rel,
+            style={'width': 'auto'}
+        ), style={'display': 'inline-block'}
+    ),
+    html.Div(
+        dcc.Graph(
+            id='fig_chloro_average_reliability',
+            figure=fig_chloro_average_reliability,
             style={'width': 'auto'}
         ), style={'display': 'inline-block'}
     )
