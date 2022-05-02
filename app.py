@@ -8,7 +8,6 @@ from data_manipulations import *
 
 app = Dash(__name__)
 
-# df = pd.read_csv("tweets_annotated.1650575029.formulaone.csv")
 df = pd.read_csv("tweets_annotated.elon_musk.1651256232.csv")
 df = prep_text(df)
 
@@ -87,9 +86,12 @@ fig_chloro_average_sentiment = px.choropleth(
 )
 
 # Sunburst sentiments by platform
-tweet_sentiments_by_source = df.groupby(['source', 'sentiment'])['sentiment'].count().reset_index(name='count')
-top_platforms = df['source'].value_counts()[:5].to_frame().reset_index()['index'].to_list()
-tweet_sentiments_by_platform_top = tweet_sentiments_by_source[tweet_sentiments_by_source['source'].isin(top_platforms)]
+tweet_sentiments_by_source = df.groupby(['source', 'sentiment'])[
+    'sentiment'].count().reset_index(name='count')
+top_platforms = df['source'].value_counts()[:5].to_frame().reset_index()[
+    'index'].to_list()
+tweet_sentiments_by_platform_top = tweet_sentiments_by_source[tweet_sentiments_by_source['source'].isin(
+    top_platforms)]
 fig_sunb = px.sunburst(
     tweet_sentiments_by_platform_top,
     path=["source", "sentiment"],
@@ -167,11 +169,21 @@ fig_tweet_most_common_sentiment_by_platform = px.bar(
     }
 )
 
-# Mabox Density
+# Histogram - Tweet sentiments per platform
+fig_hist_sent_platform = px.histogram(
+    tweet_sentiments_by_platform_top,
+    x="source",
+    color="sentiment",
+    y="count",
+    title="Tweet Sentiments per Platform"
+)
+
+# Mapbox Density
 fig_rel = px.density_mapbox(
-    df, lat='lat', lon='long', z='reliability', radius=10,
+    df, lat='lat', lon='long', radius=1,
     center=dict(lat=0, lon=180), zoom=0,
-    mapbox_style="stamen-terrain"
+    mapbox_style="stamen-terrain",
+    title="Heatmap Tweet Locations"
 )
 
 # Chloropleth - Median Tweet Reliability by Country
@@ -271,6 +283,13 @@ app.layout = html.Div(children=[
         dcc.Graph(
             id='fig_treemap',
             figure=fig_treemap,
+            style={'width': 'auto'}
+        ), style={'display': 'inline-block'}
+    ),
+    html.Div(
+        dcc.Graph(
+            id='fig_hist_sent_platform',
+            figure=fig_hist_sent_platform,
             style={'width': 'auto'}
         ), style={'display': 'inline-block'}
     ),
